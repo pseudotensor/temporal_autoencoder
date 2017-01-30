@@ -11,16 +11,7 @@ from pylab import *
 import tensorflow as tf 
 
 
-FLAGS = tf.app.flags.FLAGS
-
-tf.app.flags.DEFINE_integer('num_balls', 2,
-                            """num of balls in the model""")
-
-# 1 = normal ball
-# 2 = spokey ball
-tf.app.flags.DEFINE_integer('type_balls', 1,
-                            """type of balls in the model""")
-
+#FLAGS = tf.app.flags.FLAGS
 
 def norm(y): return sqrt((y**2).sum())
 def sigmoid(y): return 1./(1.+exp(-y))
@@ -35,15 +26,19 @@ def new_speeds(m1, m2, v1, v2):
 
 # size of bounding box: SIZE X SIZE.
 
-def model_n(T=64, TY=1, n=2, r=None, m=None):
+def model_n(T=64, TY=0, n=2, r=None, m=None):
     if r is None: r=array([4.0]*n)
     if m is None: m=array([1]*n)
     # r is to be rather small.
 
     X=zeros((T, n, 2), dtype='float')
     V = zeros((T, n, 2), dtype='float')
-    v = randn(n,2)
-    v = (v / norm(v)*.5)*1.0
+    if TY==0:
+        v = randn(n,2)
+        v = (v / norm(v)*.5)*1.0
+    else:
+        v=0*randn(n,2)
+
     good_config=False
 
     while not good_config:
@@ -104,7 +99,7 @@ def model_n(T=64, TY=1, n=2, r=None, m=None):
 def ar(x,y,z):
     return z/2+arange(x,y,z,dtype='float')
 
-def tomatrix(X,V,res,TY=1,r=None):
+def tomatrix(X,V,res,TY=0,r=None):
 
     T, n= shape(X)[0:2]
     if r is None: r=array([4.0]*n)
@@ -115,14 +110,23 @@ def tomatrix(X,V,res,TY=1,r=None):
 
     for t in range(T):
         for i in range(n):
-            if TY==1:
+            if TY==0:
+                # ball
                 ball=exp(-(  ((I-X[t,i,0])**2+(J-X[t,i,1])**2)/(r[i]**2)  )**4    )
             else:
-                ball=exp(-(  ((I-X[t,i,0])**2+(J-X[t,i,1])**2)/(r[i]**2)  )**4    )
-                
+                # rotating disk
+                xx=(I-X[t,i,0])
+                yy=(J-X[t,i,1])
+                radius=np.sqrt(xx**2+yy**2)
+                theta=np.arctan2(xx,yy)
+                size=r[i]*3
+                ball=radius<size
+                omega=1
+                ball=ball*(np.sin(theta+omega*t))**2
+                    
             mat[t, :, :, 1] += 0.0 * (1.0               ) * ball # Green
-            mat[t, :, :, 0] += 0.0 * (0.0*V[t,i,0] + 1.0) * ball # Red
-            mat[t, :, :, 2] += 1.0 * (0.0*V[t,i,1] + 1.0) * ball # Blue
+            mat[t, :, :, 0] += 0.0 * (0.0*V[t,i,0] + 1.0) * ball # Blue
+            mat[t, :, :, 2] += 1.0 * (0.0*V[t,i,1] + 1.0) * ball # Red
             
         # truncate if Velocity leads to larger than 1, so can map to 0..255 scale normally
         mat[t,:,:,0][mat[t,:,:,0]>1]=1
@@ -130,7 +134,7 @@ def tomatrix(X,V,res,TY=1,r=None):
         mat[t,:,:,2][mat[t,:,:,2]>1]=1
     return mat
 
-def model_vec(res, n=2, T=64, TY=1, r =None, m =None):
+def model_vec(res, n=2, T=64, TY=0, r =None, m =None):
     if r is None: r=array([1.2]*n)
     x,v = model_n(T,TY,n,r,m);
     V = tomatrix(x,v,res,TY,r)

@@ -42,12 +42,12 @@ class clstm(CRNNCell):
 
 # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/rnn/python/ops/core_rnn_cell_impl.py
 
-  def __init__(self, shape, filter_size, features, forget_bias=1.0, input_size=None,
+  def __init__(self, shape, filter, features, forget_bias=1.0, input_size=None,
                state_is_tuple=False, activation=tf.nn.tanh):
     """Initialize the basic CLSTM cell.
     Args:
       shape: int tuple of the height and width of the cell
-      filter_size: int tuple of the height and width of the filter
+      filter: int tuple of the height and width of the filter
       features: int of the depth of the cell 
       forget_bias: float, the bias added to forget gates (see above).
       input_size: Deprecated.
@@ -59,7 +59,7 @@ class clstm(CRNNCell):
     if input_size is not None:
       logging.warn("%s: Input_size parameter is deprecated.", self)
     self.shape = shape 
-    self.filter_size = filter_size
+    self.filter = filter
     self.features = features 
     self._forget_bias = forget_bias
     self._state_is_tuple = state_is_tuple
@@ -82,7 +82,7 @@ class clstm(CRNNCell):
         c, h = state
       else:
         c, h = tf.split(3, 2, state)
-      concat = _convolve_linear([inputs, h], self.filter_size, self.features * 4, True)
+      concat = _convolve_linear([inputs, h], self.filter, self.features * 4, True)
 
       # i = input_gate, j = new_input, f = forget_gate, o = output_gate
       i, j, f, o = tf.split(3, 4, concat)
@@ -97,11 +97,11 @@ class clstm(CRNNCell):
         new_state = tf.concat(3, [new_c, new_h])
       return new_h, new_state
 
-def _convolve_linear(args, filter_size, features, bias, bias_start=0.0, scope=None):
+def _convolve_linear(args, filter, features, bias, bias_start=0.0, scope=None):
   """convolution:
   Args:
     args: 4D Tensor or list of 4D, batch x n, Tensors.
-    filter_size: int tuple of filter with height and width.
+    filter: int tuple of filter with height and width.
     features: int, as number of features.
     bias_start: starting value to initialize bias; 0 by default.
     scope: VariableScope for created subgraph; defaults to "Linear".
@@ -127,7 +127,7 @@ def _convolve_linear(args, filter_size, features, bias, bias_start=0.0, scope=No
   # Computation
   with tf.variable_scope(scope or "Conv"):
     mat = tf.get_variable(
-        "Mat", [filter_size[0], filter_size[1], total_arg_size_depth, features], dtype=dtype)
+        "Mat", [filter[0], filter[1], total_arg_size_depth, features], dtype=dtype)
     if len(args) == 1:
       res = tf.nn.conv2d(args[0], mat, strides=[1, 1, 1, 1], padding='SAME')
     else:
