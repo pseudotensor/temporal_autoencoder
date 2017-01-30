@@ -78,9 +78,10 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     dcnnstrides=[1,2,1,2]
     dcnnstrideproduct=np.product(dcnnstrides)
     if dcnnstrideproduct!=cnnstrideproduct:
-      print("cnn and dcnn strides must match for creating input size and output same the same");
+      print("cnn and dcnn strides must match for creating input size and output same size");
       exit
-    dcnnfeatures=[8,8,8,3]
+    # last dcnn feature is rgb again
+    dcnnfeatures=[8,8,8,sizez]
     #
     #
     #
@@ -91,7 +92,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       # state: batchsize x shape x shape x features
       new_state = cell.set_zero_state(FLAGS.minibatch_size, tf.float32) 
 
-    # Create CNN-LSTM-dCNN for an input of input_seq_length frames in time
+    # Create CNN-LSTM-dCNN for an input of input_seq_length-1 frames in n time for an output of input_seq_length-1 frames in n+1 time
     for i in xrange(FLAGS.input_seq_length-1):
 
       # ENCODE
@@ -130,11 +131,12 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       if i == 0:
         tf.get_variable_scope().reuse_variables()
 
-    # Pack-up predictive layers
+    # Pack-up predictive layer' results
     # e.g. for input_seq_length=10 loop 0..9, had put into x_pred i=5,6,7,8,9 (i.e. 5 frame prediction)
     x_pred = tf.pack(x_pred)
+    # reshape so in order of minibatch x frame x sizex x sizey x rgb
     x_pred = tf.transpose(x_pred, [1,0,2,3,4])
-
+    
 
     #######################################################
     # Create network to generate predicted video
@@ -173,7 +175,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       if i >= FLAGS.predict_frame_start:
         x_pred_long.append(x_1_pred)
 
-    # Pack-up layers
+    # Pack-up predicted layer's results
     x_pred_long = tf.pack(x_pred_long)
     x_pred_long = tf.transpose(x_pred_long, [1,0,2,3,4])
 
