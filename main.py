@@ -115,7 +115,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     with tf.variable_scope('clstm', initializer = tf.random_uniform_initializer(-.01, 0.1)):
       # input shape, kernel filter size, number of features
       cell = clstm.clstm(clstmshape, clstmkernel, clstmfeatures)
-      # state: batchsize x shape x shape x features
+      # state: batchsize x clstmshape x clstmshape x clstmfeatures
       new_state = cell.set_zero_state(FLAGS.minibatch_size, tf.float32) 
 
     # Create CNN-LSTM-dCNN for an input of input_seq_length-1 frames in n time for an output of input_seq_length-1 frames in n+1 time

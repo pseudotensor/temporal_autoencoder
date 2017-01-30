@@ -27,7 +27,7 @@ class CRNNCell(object):
       batch_size: int, float, or unit Tensor representing batch size.
       dtype: data type for the state.
     Returns:
-      tensor with shape '[batch_size x shape[0] x shape[1] x features]
+      tensor with shape '[batch_size x shape[0] x shape[1] x (features*2)]
       filled with zeros
     """
     
@@ -76,15 +76,19 @@ class clstm(CRNNCell):
 
   def __call__(self, inputs, state, scope=None):
     """Long short-term memory cell (LSTM)."""
+    # inputs: batchsize x clstmshape x clstmshape x clstmfeatures
     with tf.variable_scope(scope or type(self).__name__):
       # Parameters of gates are concatenated into one multiply for efficiency.
       if self._state_is_tuple:
         c, h = state
       else:
+        # c and h are each batchsize x clstmshape x clstmshape x clstmfeatures
         c, h = tf.split(3, 2, state)
+      # [inputs,h] is: 2 x batchsize x clstmshape x clstmshape x clstmfeatures
       concat = _convolve_linear([inputs, h], self.filter, self.features * 4, True)
+      # concat: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
 
-      # i = input_gate, j = new_input, f = forget_gate, o = output_gate
+      # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
       i, j, f, o = tf.split(3, 4, concat)
 
       new_c = (c * tf.nn.sigmoid(f + self._forget_bias) + tf.nn.sigmoid(i) *
@@ -115,23 +119,29 @@ def _convolve_linear(args, filter, features, bias, bias_start=0.0, scope=None):
   total_arg_size_depth = 0
   shapes = [a.get_shape().as_list() for a in args]
   for shape in shapes:
+    # ensure each term in arg is exactly 4D
     if len(shape) != 4:
       raise ValueError("Linear needs 4D arguments: %s" % str(shapes))
+    # ensure each term in arg has non-None 4D term
     if not shape[3]:
       raise ValueError("Linear needs shape[4] of arguments: %s" % str(shapes))
     else:
+      # add last dimension (features) together
       total_arg_size_depth += shape[3]
 
   dtype = [a.dtype for a in args][0]
 
   # Computation
   with tf.variable_scope(scope or "Conv"):
+    # setup weights as kernel x kernel x (input features = clstmfeatures*2) x (new features=clstmfeatures*4)
     mat = tf.get_variable(
         "Mat", [filter[0], filter[1], total_arg_size_depth, features], dtype=dtype)
     if len(args) == 1:
       res = tf.nn.conv2d(args[0], mat, strides=[1, 1, 1, 1], padding='SAME')
     else:
+      # first argument is batchsize x clstmshape x clstmshape x (2*clstmfeatures)
       res = tf.nn.conv2d(tf.concat(3, args), mat, strides=[1, 1, 1, 1], padding='SAME')
+      # res: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
     if not bias:
       return res
     bias_term = tf.get_variable(
