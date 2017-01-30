@@ -30,7 +30,7 @@ tf.app.flags.DEFINE_integer('sizexy', 32,
 tf.app.flags.DEFINE_integer('input_seq_length', 10,
                             """size of hidden layer""")
 tf.app.flags.DEFINE_integer('predict_frame_start', 5,
-                            """ how many frames to use to predict""")
+                            """ frame number, in zero-base counting, to start using prediction as output or next input""")
 tf.app.flags.DEFINE_integer('max_minibatches', 1000000,
                             """maximum number of mini-batches""")
 tf.app.flags.DEFINE_float('hold_prob', .8,
@@ -60,6 +60,11 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     hold_prob = tf.placeholder("float")
     x_dropout = tf.nn.dropout(x, hold_prob)
 
+    # Some checks
+    if FLAGS.input_seq_length-1<=FLAGS.predict_frame_start:
+      print("prediction frame starting point (zero starting point) beyond input size - 1, so no prediction used as next input or even used as any output to compute loss")
+      exit
+    
 
     #######################################################
     # Create network to train
@@ -69,6 +74,9 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     cnnstrideproduct=np.product(cnnstrides)
     cnnfeatures=[8,8,8,4]
     #
+    if sizexy % cnnstrideproduct !=0:
+      print("sizexy must be evenly divisible by cnnstrictproduct to keep input to cnn or dcnn an integer number of pixels")
+      exit
     clstminput=sizexy/cnnstrideproduct # must be evenly divisible
     clstmshape=[clstminput,clstminput]
     clstmkernel=[3,3]
@@ -183,6 +191,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     #######################################################
     # Setup loss Computation
     # Loss computes L2 for original sequence vs. predicted sequence over input_seq_length - (seq.start+1) frames
+    # Compare x^{n+1} to xpred^n (that is supposed to be approximation to x^{n+1})
     loss = tf.nn.l2_loss(x[:,FLAGS.predict_frame_start+1:,:,:,:] - x_pred[:,:,:,:,:])
     #tf.scalar_summary('loss', loss)
     tf.summary.scalar('loss', loss)
