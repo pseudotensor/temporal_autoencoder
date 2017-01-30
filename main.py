@@ -89,11 +89,11 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     clstmkernel=[3,3]
     clstmfeatures=cnnfeatures[3] # same as features of last cnn layer fed into clstm
     #
-    dcnnkernels=[1,3,3,3]
-    dcnnstrides=[1,2,1,2]
+    dcnnkernels=[1,3,3,3] # reasonably the reverse order of cnnkernels
+    dcnnstrides=[1,2,1,2] # reasonably the reverse order of cnnstrides
     dcnnstrideproduct=np.product(dcnnstrides)
     # last dcnn feature is rgb again
-    dcnnfeatures=[8,8,8,sizez]
+    dcnnfeatures=[8,8,8,sizez] # reasonably the reverse order of cnnfeatures, except last cnnfeatures and last dcnnfeatures (note, features are for produced object, while kernels and strides operate on current object, hence apparent shift)
     #
     # check d-strides are acceptable
     testsize=sizexy
