@@ -74,9 +74,16 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     cnnstrideproduct=np.product(cnnstrides)
     cnnfeatures=[8,8,8,4]
     #
-    if sizexy % cnnstrideproduct !=0:
-      print("sizexy must be evenly divisible by cnnstrictproduct to keep input to cnn or dcnn an integer number of pixels")
-      exit
+    # check strides are acceptable
+    testsize=sizexy
+    for i in xrange(len(cnnstrides)):
+      if testsize % cnnstrides[i] !=0:
+        print("sizexy must be evenly divisible by each stride, in order to keep input to cnn or dcnn an integer number of pixels")
+        exit
+      else:
+        testsize=testsize/cnnstrides[i]
+    #
+        
     clstminput=sizexy/cnnstrideproduct # must be evenly divisible
     clstmshape=[clstminput,clstminput]
     clstmkernel=[3,3]
@@ -85,11 +92,22 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     dcnnkernels=[1,3,3,3]
     dcnnstrides=[1,2,1,2]
     dcnnstrideproduct=np.product(dcnnstrides)
+    # last dcnn feature is rgb again
+    dcnnfeatures=[8,8,8,sizez]
+    #
+    # check d-strides are acceptable
+    testsize=sizexy
+    for i in xrange(len(dcnnstrides)):
+      if testsize % dcnnstrides[i] !=0:
+        print("sizexy must be evenly divisible by each d-stride, in order to keep input to cnn or dcnn an integer number of pixels")
+        exit
+      else:
+        testsize=testsize/dcnnstrides[i]
+    #
+    # ensure strides cumulate to same total product so input and output same size, because we feed output back as input
     if dcnnstrideproduct!=cnnstrideproduct:
       print("cnn and dcnn strides must match for creating input size and output same size");
       exit
-    # last dcnn feature is rgb again
-    dcnnfeatures=[8,8,8,sizez]
     #
     #
     #
