@@ -86,7 +86,11 @@ smplayer out_all2_fast.mp4
 
 * Try more filters
 
-* Try more depth
+* Try other LSTM architectures (C-peek, bind forget-recall, GRU, etc.)
+
+* Try adversarial loss
+
+* Try more depth in time
 
 * Train with geodesic acceleration (can't be done in python in tensorflow)
 

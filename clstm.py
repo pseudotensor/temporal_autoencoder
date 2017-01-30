@@ -88,6 +88,7 @@ class clstm(CRNNCell):
       concat = _convolve_linear([inputs, h], self.filter, self.features * 4, True)
       # concat: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
 
+      # http://colah.github.io/posts/2015-08-Understanding-LSTMs/
       # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
       i, j, f, o = tf.split(3, 4, concat)
 
