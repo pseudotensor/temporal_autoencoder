@@ -154,7 +154,8 @@ def autoencode(continuetrain=0):
     # Setup loss Computation
     # Loss computes L2 for original sequence vs. predicted sequence over input_seq_length - (seq.start+1) frames
     loss = tf.nn.l2_loss(x[:,FLAGS.predict_frame_start+1:,:,:,:] - x_unwrap[:,:,:,:,:])
-    tf.scalar_summary('loss', loss)
+    #tf.scalar_summary('loss', loss)
+    tf.summary.scalar('loss', loss)
 
     # Set training method
     train_operation = tf.train.AdamOptimizer(FLAGS.adamvar).minimize(loss)
@@ -170,7 +171,8 @@ def autoencode(continuetrain=0):
     tf.add_to_collection('vars', nstep)
 
     # Summary op
-    summary_op = tf.merge_all_summaries()
+    #summary_op = tf.merge_all_summaries()
+    summary_op = tf.summary.merge_all()
  
     # Initialize variables
     init = tf.global_variables_initializer()
@@ -200,7 +202,7 @@ def autoencode(continuetrain=0):
       print("done loading network: nstep=%d" % (nstep))
       
     # Setup summary
-    summary_writer = tf.train.SummaryWriter(FLAGS.ckpt_dir, sess.graph)
+    summary_writer = tf.summary.FileWriter(FLAGS.ckpt_dir, sess.graph)
 
     # Set number of model frames
     #modelframes=FLAGS.input_seq_length+predictframes
