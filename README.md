@@ -50,14 +50,18 @@ cs231n.stanford.edu/reports2016/223_Report.pdf
 # Program Requirements:
 
 * Tensorflow and related packages like python
-
 * OpenCV
+
+# Post-Processing requirements
+
+* avconv, mencoder, MP4Box,smplayer
+
 
 # How to run:
 
 python main.py
 
-And check result by making model vs. predicted video:
+Post-processing: making model vs. predicted video:
 
 sh mergemov.sh
 
@@ -76,7 +80,8 @@ smplayer out_all2_fast.mp4
 
 2) In balls.py:
 
-* number of balls  num_balls
+* type of model: modeltype
+* number of balls:  num_balls
 * SIZE: size of ball's bounding box in pixels
 
 
