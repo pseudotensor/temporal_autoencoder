@@ -93,12 +93,12 @@ class clstm(CRNNCell):
         # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
         i, j, f, o = tf.split(3, 4, concat)
       else:
-        incat = tf.concat(3,args)
+        #incat = tf.concat(3,args)
         # general W.x + b separately for each i,j,f,o
-        i = tf.matmul(incat,weightsi) + biasesi
-        j = tf.matmul(incat,weightsj) + biasesj
-        f = tf.matmul(incat,weightsf) + biasesf
-        o = tf.matmul(incat,weightso) + biaseso
+        #i = tf.matmul(incat,weightsi) + biasesi
+        #j = tf.matmul(incat,weightsj) + biasesj
+        #f = tf.matmul(incat,weightsf) + biasesf
+        #o = tf.matmul(incat,weightso) + biaseso
         
       # concat: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
 
