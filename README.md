@@ -71,25 +71,18 @@ smplayer out_all2_fast.mp4
 
 # Some training results:
 
-* Balls:
-Slow: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/xQdaaYogRMM/0.jpg)](https://www.youtube.com/watch?v=xQdaaYogRMM)
+* Balls, slow movie: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/xQdaaYogRMM/0.jpg)](https://www.youtube.com/watch?v=xQdaaYogRMM)
 
-Fast: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/wxxD4sDUEfg/0.jpg)](https://www.youtube.com/watch?v=wxxD4sDUEfg)
+* Balls, fast movie: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/wxxD4sDUEfg/0.jpg)](https://www.youtube.com/watch?v=wxxD4sDUEfg)
 
-Training Curve in Tensorflow (norm order 80):
-
-![Alt text](https://github.com/pseudotensor/temporal_autoencoder/master/lossexamples/loss_balls.jpg "Training loss curve for balls prediction vs. model.")
+* Training Curve in Tensorflow (norm order 80): ![Alt text](https://github.com/pseudotensor/temporal_autoencoder/blob/master/lossexamples/loss_balls.jpg "Training loss curve for balls prediction vs. model.")
 
 
+* Wheel, slow movie: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/8IsqTFnZ_1w/0.jpg)](https://www.youtube.com/watch?v=8IsqTFnZ_1w)
 
-* Wheel:
-Slow: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/8IsqTFnZ_1w/0.jpg)](https://www.youtube.com/watch?v=8IsqTFnZ_1w)
+* Wheel, fast movie: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/lABUOLzCp-k/0.jpg)](https://www.youtube.com/watch?v=lABUOLzCp-k)
 
-Fast: [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/lABUOLzCp-k/0.jpg)](https://www.youtube.com/watch?v=lABUOLzCp-k)
-
-Training Curve in Tensorflow (norm order 40):
-
-![Alt text](https://github.com/pseudotensor/temporal_autoencoder/master/lossexamples/loss_wheel.jpg "Training loss curve for wheel prediction vs. model.")
+* Training Curve in Tensorflow (norm order 40): ![Alt text](https://github.com/pseudotensor/temporal_autoencoder/blob/master/lossexamples/loss_wheel.jpg "Training loss curve for wheel prediction vs. model.")
 
 
 # Parameters:
