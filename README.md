@@ -15,7 +15,9 @@ https://arxiv.org/abs/1511.05440
 https://arxiv.org/abs/1605.08104
 http://file.scirp.org/pdf/AM20100400007_46529567.pdf
 https://arxiv.org/abs/1607.03597
-
+http://web.mit.edu/vondrick/tinyvideoa
+https://arxiv.org/abs/1605.07157
+https://arxiv.org/abs/1502.04681
 
 # Uses parts of (or inspired by) the following repos:
 
@@ -105,6 +107,8 @@ smplayer out_all2_fast.mp4
 * Test on other models
 
 * Try more filters
+
+* Try temporal convolution
 
 * Try other LSTM architectures (C-peek, bind forget-recall, GRU, etc.)
 

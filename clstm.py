@@ -85,12 +85,23 @@ class clstm(CRNNCell):
         # c and h are each batchsize x clstmshape x clstmshape x clstmfeatures
         c, h = tf.split(3, 2, state)
       # [inputs,h] is: 2 x batchsize x clstmshape x clstmshape x clstmfeatures
-      concat = _convolve_linear([inputs, h], self.filter, self.features * 4, True)
+
+      doclstm=1
+      if doclstm==1:
+        concat = _convolve_linear([inputs, h], self.filter, self.features * 4, True)
+        # http://colah.github.io/posts/2015-08-Understanding-LSTMs/
+        # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
+        i, j, f, o = tf.split(3, 4, concat)
+      else:
+        incat = tf.concat(3,args)
+        # general W.x + b separately for each i,j,f,o
+        i = tf.matmul(incat,weightsi) + biasesi
+        j = tf.matmul(incat,weightsj) + biasesj
+        f = tf.matmul(incat,weightsf) + biasesf
+        o = tf.matmul(incat,weightso) + biaseso
+        
       # concat: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
 
-      # http://colah.github.io/posts/2015-08-Understanding-LSTMs/
-      # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
-      i, j, f, o = tf.split(3, 4, concat)
 
       new_c = (c * tf.nn.sigmoid(f + self._forget_bias) + tf.nn.sigmoid(i) *
                self._activation(j))

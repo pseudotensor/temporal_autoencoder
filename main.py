@@ -157,7 +157,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       if i == 0:
         tf.get_variable_scope().reuse_variables()
 
-    # Pack-up predictive layer' results
+    # Pack-up predictive layer's results
     # e.g. for input_seq_length=10 loop 0..9, had put into x_pred i=5,6,7,8,9 (i.e. 5 frame prediction)
     x_pred = tf.pack(x_pred)
     # reshape so in order of minibatch x frame x sizex x sizey x rgb
@@ -310,7 +310,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
         normalnorm=np.sum(dat[0,0])
         print("normalnorm=%d" % (normalnorm))
-        print("L2 percent loss=%g" % (float(lossm)/float(normalnorm)))
+        print("L2 percent loss=%g" % (np.srqt(float(lossm))/float(normalnorm)))
       else:
         # track progress
         sys.stdout.write('.')
