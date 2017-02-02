@@ -310,7 +310,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
         normalnorm=np.sum(dat[0,0])
         print("normalnorm=%d" % (normalnorm))
-        print("L2 percent loss=%g" % (np.sqrt(float(lossm))/float(normalnorm)))
+        print("L2 percent loss=%g %" % 100.0*(np.sqrt(float(lossm))/float(normalnorm)))
       else:
         # track progress
         sys.stdout.write('.')

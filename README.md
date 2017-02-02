@@ -18,6 +18,8 @@ https://arxiv.org/abs/1607.03597
 http://web.mit.edu/vondrick/tinyvideoa
 https://arxiv.org/abs/1605.07157
 https://arxiv.org/abs/1502.04681
+https://arxiv.org/abs/1605.07157
+http://www.ri.cmu.edu/pub_files/2014/3/egpaper_final.pdf
 
 # Uses parts of (or inspired by) the following repos:
 
@@ -91,14 +93,14 @@ smplayer out_all2_fast.mp4
 
 1) In main.py:
 
-* In main(), continuetrain: choose to use checkpoints (if exist) or not.
-
 * Choose global flags
+* In main():
+  * Choose to use checkpoints (if exist) or not: continuetrain
+  * type of model: modeltype
+  * number of balls: num_balls
 
 2) In balls.py:
 
-* type of model: modeltype
-* number of balls:  num_balls
 * SIZE: size of ball's bounding box in pixels
 
 
@@ -112,7 +114,15 @@ smplayer out_all2_fast.mp4
 
 * Try other LSTM architectures (C-peek, bind forget-recall, GRU, etc.)
 
-* Try adversarial loss
+* Try adversarial loss:
+
+https://github.com/carpedm20/DCGAN-tensorflow
+http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/
+http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/
+http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/
+http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/ (pytorch)
+http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/
+https://arxiv.org/pdf/1511.05644v2.pdf
 
 * Try more depth in time
 

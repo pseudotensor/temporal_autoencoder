@@ -121,7 +121,7 @@ def tomatrix(X,V,res,TY=0,r=None):
                 theta=np.arctan2(xx,yy)
                 size=r[i]*3
                 ball=radius<size
-                omega=1
+                omega=0.1
                 ball=ball*(np.sin(theta+omega*t))**2
                     
             mat[t, :, :, 1] += 0.0 * (1.0               ) * ball # Green
