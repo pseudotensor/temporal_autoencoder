@@ -42,12 +42,13 @@ class clstm(CRNNCell):
 
 # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/rnn/python/ops/core_rnn_cell_impl.py
 
-  def __init__(self, shape, filter, features, forget_bias=1.0, input_size=None,
+  def __init__(self, shape, filter, stride, features, forget_bias=1.0, input_size=None,
                state_is_tuple=False, activation=tf.nn.tanh):
     """Initialize the basic CLSTM cell.
     Args:
       shape: int tuple of the height and width of the cell
       filter: int tuple of the height and width of the filter
+      stride: stride to use if doing convolution or deconvolution
       features: int of the depth of the cell 
       forget_bias: float, the bias added to forget gates (see above).
       input_size: Deprecated.
@@ -60,6 +61,7 @@ class clstm(CRNNCell):
       logging.warn("%s: Input_size parameter is deprecated.", self)
     self.shape = shape 
     self.filter = filter
+    self.stride = stride
     self.features = features 
     self._forget_bias = forget_bias
     self._state_is_tuple = state_is_tuple
@@ -74,7 +76,7 @@ class clstm(CRNNCell):
   def output_size(self):
     return self._num_units
 
-  def __call__(self, inputs, state, scope=None):
+  def __call__(self, inputs, state, typec='Conv', scope=None):
     """Long short-term memory cell (LSTM)."""
     # inputs: batchsize x clstmshape x clstmshape x clstmfeatures
     with tf.variable_scope(scope or type(self).__name__):
@@ -88,12 +90,12 @@ class clstm(CRNNCell):
 
       doclstm=1
       if doclstm==1:
-        concat = _convolve_linear([inputs, h], self.filter, self.features * 4, True)
+        concat = _convolve_linear([inputs, h], self.filter, self.stride, self.features * 4, typec, True)
         # http://colah.github.io/posts/2015-08-Understanding-LSTMs/
         # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
         i, j, f, o = tf.split(3, 4, concat)
       else:
-        # work in-progress
+        # TODO: work in-progress
         incat = tf.concat(3,args)
         # general W.x + b separately for each i,j,f,o
         #i = tf.matmul(incat,weightsi) + biasesi
@@ -103,9 +105,10 @@ class clstm(CRNNCell):
         
       # concat: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
 
-
-      new_c = (c * tf.nn.sigmoid(f + self._forget_bias) + tf.nn.sigmoid(i) *
-               self._activation(j))
+      # Hadamard (element-by-element) products (*)
+      # If stride!=1, then c will be different size than i,j,f,o, so next operation won't work.
+      new_c = (c * tf.nn.sigmoid(f + self._forget_bias) + tf.nn.sigmoid(i) * self._activation(j))
+      # If stride!=1, then o different dimension than new_h needs to be. (because c and h need to be same size if packing/splitting them as well as recurrently needs to be same size)
       new_h = self._activation(new_c) * tf.nn.sigmoid(o)
 
       if self._state_is_tuple:
@@ -114,11 +117,12 @@ class clstm(CRNNCell):
         new_state = tf.concat(3, [new_c, new_h])
       return new_h, new_state
 
-def _convolve_linear(args, filter, features, bias, bias_start=0.0, scope=None):
+def _convolve_linear(args, filter, stride, features, typec, bias, bias_start=0.0, scope=None):
   """convolution:
   Args:
     args: 4D Tensor or list of 4D, batch x n, Tensors.
     filter: int tuple of filter with height and width.
+    stride: stride for convolution
     features: int, as number of features.
     bias_start: starting value to initialize bias; 0 by default.
     scope: VariableScope for created subgraph; defaults to "Linear".
@@ -144,23 +148,49 @@ def _convolve_linear(args, filter, features, bias, bias_start=0.0, scope=None):
 
   dtype = [a.dtype for a in args][0]
 
-  # Computation
-  with tf.variable_scope(scope or "Conv"):
-    # setup weights as kernel x kernel x (input features = clstmfeatures*2) x (new features=clstmfeatures*4)
-    mat = tf.get_variable(
-        "Mat", [filter[0], filter[1], total_arg_size_depth, features], dtype=dtype)
-    if len(args) == 1:
-      res = tf.nn.conv2d(args[0], mat, strides=[1, 1, 1, 1], padding='SAME')
-    else:
-      # first argument is batchsize x clstmshape x clstmshape x (2*clstmfeatures)
-      res = tf.nn.conv2d(tf.concat(3, args), mat, strides=[1, 1, 1, 1], padding='SAME')
-      # res: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
-    if not bias:
-      return res
-    bias_term = tf.get_variable(
+  # concat
+  if len(args) == 1:
+    inputs = args[0]
+  else:
+    inputs=tf.concat(3, args)
+
+  # Conv
+  if typec=='Conv':
+    with tf.variable_scope(scope or "Conv"):
+      # setup weights as kernel x kernel x (input features = clstmfeatures*2) x (new features=clstmfeatures*4)
+      weights = tf.get_variable( "Weights", [filter[0], filter[1], total_arg_size_depth, features], dtype=dtype)
+      res = tf.nn.conv2d(inputs, weights, strides=[1, stride, stride, 1], padding='SAME')
+
+    # BIAS
+    if bias:
+      bias_term = tf.get_variable(
         "Bias", [features],
         dtype=dtype,
         initializer=tf.constant_initializer(
             bias_start, dtype=dtype))
+    else:
+      bias_term = 0*res
+
+  # deConv
+  if typec=='deConv':
+    with tf.variable_scope(scope or "deConv"):
+      # setup weights as kernel x kernel x (new features=clstmfeatures*4) x (input features = clstmfeatures*2).
+      # i.e., 2nd arg to transpose version is [height, width, output_channels, in_channels], where last 2 are switched compared to normal conv2d
+      deweights = tf.get_variable( "deWeights", [filter[0], filter[1], features, total_arg_size_depth], dtype=dtype)
+      output_shape = tf.pack([tf.shape(inputs)[0], tf.shape(inputs)[1]*stride, tf.shape(inputs)[2]*stride, features]) 
+      # first argument is batchsize x clstmshape x clstmshape x (2*clstmfeatures)
+      # res: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
+      res = tf.nn.conv2d_transpose(inputs, deweights, output_shape, strides=[1, stride, stride, 1], padding='SAME')
+
+    # BIAS
+    if bias:
+      bias_term = tf.get_variable(
+        "deBias", [features],
+        dtype=dtype,
+        initializer=tf.constant_initializer(
+            bias_start, dtype=dtype))
+    else:
+      bias_term = 0*res
+
   return res + bias_term
 

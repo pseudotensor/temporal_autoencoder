@@ -87,6 +87,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     clstminput=sizexy/cnnstrideproduct # must be evenly divisible
     clstmshape=[clstminput,clstminput]
     clstmkernel=[3,3]
+    clstmstride=1 # currently needs to be 1 unless implement tf.pad() or tf.nn.fractional_avg_pool()
     clstmfeatures=cnnfeatures[3] # same as features of last cnn layer fed into clstm
     #
     dcnnkernels=[1,3,3,3] # reasonably the reverse order of cnnkernels
@@ -112,12 +113,25 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     #
     #
     x_pred = []
+
+    ####################
+    # Setup CLSTM
     with tf.variable_scope('clstm', initializer = tf.random_uniform_initializer(-.01, 0.1)):
       # input shape, kernel filter size, number of features
-      cell = clstm.clstm(clstmshape, clstmkernel, clstmfeatures)
+      convcell = clstm.clstm(clstmshape, clstmkernel, clstmstride, clstmfeatures)
       # state: batchsize x clstmshape x clstmshape x clstmfeatures
-      new_state = cell.set_zero_state(FLAGS.minibatch_size, tf.float32) 
+      new_state = convcell.set_zero_state(FLAGS.minibatch_size, tf.float32) 
 
+      # Setup deCLSTM
+    with tf.variable_scope('declstm', initializer = tf.random_uniform_initializer(-.01, 0.1)):
+      # input shape, kernel filter size, number of features
+      deconvcell = clstm.clstm(clstmshape, clstmkernel, clstmstride, clstmfeatures)
+      # state: batchsize x clstmshape x clstmshape x clstmfeatures
+      denew_state = deconvcell.set_zero_state(FLAGS.minibatch_size, tf.float32) 
+
+      
+
+    ########################
     # Create CNN-LSTM-dCNN for an input of input_seq_length-1 frames in n time for an output of input_seq_length-1 frames in n+1 time
     for i in xrange(FLAGS.input_seq_length-1):
 
@@ -137,13 +151,16 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       # cnn4:
       cnn4 = ld.cnn2d_layer(cnn3, cnnkernels[3], cnnstrides[3], cnnfeatures[3], "cnn_4")
 
-      # lstm layer (input y_0 and hidden state, output prediction y_1 and new hidden state new_state)
+      # Convolutional lstm layer (input y_0 and hidden state, output prediction y_1 and new hidden state new_state)
       y_0 = cnn4 #y_0 should be same shape as first argument in clstm.clstm() above.
-      y_1, new_state = cell(y_0, new_state)
+      y_1, new_state = convcell(y_0, new_state, 'Conv')
+
+      # deConvolutional LSTM layer
+      y_2, denew_state = deconvcell(y_1, denew_state, 'deConv')
 
       # DECODE
       # cnn5
-      cnn5 = ld.dcnn2d_layer(y_1, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_5")
+      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_5")
       # cnn6
       cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_6")
       # cnn7
@@ -168,8 +185,14 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     # Create network to generate predicted video
     predictframes=50
 
+    ##############
+    # Setup CLSTM (initialize to zero, but same convcell as in other network)
     x_pred_long = []
-    new_state_pred = cell.set_zero_state(FLAGS.minibatch_size, tf.float32) 
+    new_state_pred = convcell.set_zero_state(FLAGS.minibatch_size, tf.float32)
+    new_destate_pred = deconvcell.set_zero_state(FLAGS.minibatch_size, tf.float32)
+
+    #######
+    # Setup long prediction network
     for i in xrange(predictframes):
 
       # ENCODE
@@ -185,13 +208,16 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       # cnn4
       cnn4 = ld.cnn2d_layer(cnn3, cnnkernels[3], cnnstrides[3], cnnfeatures[3], "cnn_4")
 
-      # lstm layer
+      # Convolutional lstm layer
       y_0 = cnn4
-      y_1, new_state_pred = cell(y_0, new_state_pred)
+      y_1, new_state_pred = convcell(y_0, new_state_pred, 'Conv')
+
+      # deConvolutional lstm layer
+      y_2, new_destate_pred = deconvcell(y_1, new_destate_pred, 'deConv')
 
       # DECODE
       # cnn5
-      cnn5 = ld.dcnn2d_layer(y_1, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_5")
+      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_5")
       # cnn6
       cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_6")
       # cnn7
@@ -310,7 +336,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
         normalnorm=np.sum(dat[0,0])
         print("normalnorm=%d" % (normalnorm))
-        print("L2 percent loss=%g" % 100.0*(np.sqrt(float(lossm))/float(normalnorm)))
+        print("L2 percent loss=%g \%" % 100.0*(np.sqrt(float(lossm))/float(normalnorm)))
       else:
         # track progress
         sys.stdout.write('.')

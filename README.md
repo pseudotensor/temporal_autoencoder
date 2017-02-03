@@ -6,10 +6,10 @@
 
 # Inspired by papers:
 
+https://arxiv.org/abs/1506.04214 (Conv LSTM)
 http://www.jmlr.org/proceedings/papers/v2/sutskever07a/sutskever07a.pdf
 https://arxiv.org/abs/1411.4389
 https://arxiv.org/abs/1504.08023
-https://arxiv.org/abs/1506.04214 (like this paper with RNN but now with LSTM)
 https://arxiv.org/abs/1511.06380
 https://arxiv.org/abs/1511.05440
 https://arxiv.org/abs/1605.08104
@@ -109,6 +109,14 @@ smplayer out_all2_fast.mp4
 * Test on other models
 
 * Try more filters
+
+* Try L2 loss not only on (or not just on) final image, but hidden states.  Should approximate adversarial networks, which keep image and hidden latent variable more smoothly connected (i.e. avoid fractured manifold).
+
+* Try different hyperparameters
+
+* Try Stacked Conv/Deconv LSTMs (https://arxiv.org/pdf/1506.04214v2.pdf and https://arxiv.org/pdf/1605.07157v4.pdf)
+
+* Try skip connections (https://arxiv.org/pdf/1605.07157v4.pdf)
 
 * Try temporal convolution
 
