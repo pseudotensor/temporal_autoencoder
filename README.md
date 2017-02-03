@@ -88,6 +88,15 @@ smplayer out_all2_fast.mp4
 
 * Training Curve in Tensorflow (norm order 40): ![Alt text](https://github.com/pseudotensor/temporal_autoencoder/blob/master/lossexamples/loss_wheel.jpg "Training loss curve for wheel prediction vs. model.")
 
+Notes for wheel case:
+
+* Longer training frames work better to predict longer
+
+* Seems to need to have loss over at least one rotation to be able to predict well into multiple frames in the future
+
+* Central part of wheel diffuses even when otherwise does well.  Lack of resolution
+
+
 
 # Parameters:
 
@@ -102,6 +111,7 @@ smplayer out_all2_fast.mp4
 2) In balls.py:
 
 * SIZE: size of ball's bounding box in pixels
+* omega: angular frequency of rotation for modeltype=1 (wheel type)
 
 
 # Ideas and Future Work:
@@ -113,6 +123,10 @@ smplayer out_all2_fast.mp4
 * Try L2 loss not only on (or not just on) final image, but hidden states.  Should approximate adversarial networks, which keep image and hidden latent variable more smoothly connected (i.e. avoid fractured manifold).
 
 * Try different hyperparameters
+
+* Try multi-scale for space
+
+* Try multi-scale for time (to capture periods over long times)
 
 * Try Stacked Conv/Deconv LSTMs (https://arxiv.org/pdf/1506.04214v2.pdf and https://arxiv.org/pdf/1605.07157v4.pdf)
 

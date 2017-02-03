@@ -27,9 +27,9 @@ tf.app.flags.DEFINE_string('video_dir', './videos',
                             """directory to store checkpoints""")
 tf.app.flags.DEFINE_integer('sizexy', 32,
                             """size x and y dimensions for model, training, and prediction""")
-tf.app.flags.DEFINE_integer('input_seq_length', 10,
+tf.app.flags.DEFINE_integer('input_seq_length', 50,
                             """size of hidden layer""")
-tf.app.flags.DEFINE_integer('predict_frame_start', 5,
+tf.app.flags.DEFINE_integer('predict_frame_start', 25,
                             """ frame number, in zero-base counting, to start using prediction as output or next input""")
 tf.app.flags.DEFINE_integer('max_minibatches', 1000000,
                             """maximum number of mini-batches""")
@@ -236,6 +236,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     # Setup loss Computation
     # Loss computes L2 for original sequence vs. predicted sequence over input_seq_length - (seq.start+1) frames
     # Compare x^{n+1} to xpred^n (that is supposed to be approximation to x^{n+1})
+    # x: batchsize, time steps, sizexy, sizexy, sizez
     loss = tf.nn.l2_loss(x[:,FLAGS.predict_frame_start+1:,:,:,:] - x_pred[:,:,:,:,:])
     #tf.scalar_summary('loss', loss)
     tf.summary.scalar('loss', loss)
@@ -334,7 +335,8 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
         print("step=%d nstep=%d" % (step,nstep))
         print("L2 loss=%g" % (lossm))
 
-        normalnorm=np.sum(dat[0,0])
+        #normalnorm=np.sum(dat[0,0])
+        normalnorm=np.sum(dat[0,FLAGS.predict_frame_start+1:,:,:,:])
         print("normalnorm=%d" % (normalnorm))
         print("L2 percent loss=%g" % (100.0*(np.sqrt(float(lossm))/float(normalnorm))))
       else:
