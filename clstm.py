@@ -5,7 +5,7 @@ class CRNNCell(object):
   """CRNN cell.
   """
 
-  def __call__(self, inputs, state, scope=None):
+  def __call__(self, inputs, state, typec='Conv', scope=None):
     """Run this RNN cell on inputs, starting from the inputted state.
     """
     raise NotImplementedError("Abstract method")
@@ -90,7 +90,7 @@ class clstm(CRNNCell):
 
       doclstm=1
       if doclstm==1:
-        concat = _convolve_linear([inputs, h], self.filter, self.stride, self.features * 4, typec, True)
+        concat = _convolve_linear([inputs, h], self.filter, self.stride, self.features * 4, typec, True, scope=scope)
         # http://colah.github.io/posts/2015-08-Understanding-LSTMs/
         # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
         i, j, f, o = tf.split(3, 4, concat)
@@ -156,7 +156,7 @@ def _convolve_linear(args, filter, stride, features, typec, bias, bias_start=0.0
 
   # Conv
   if typec=='Conv':
-    with tf.variable_scope(scope or "Conv"):
+    with tf.variable_scope(scope):# or "Conv"):
       # setup weights as kernel x kernel x (input features = clstmfeatures*2) x (new features=clstmfeatures*4)
       weights = tf.get_variable( "Weights", [filter[0], filter[1], total_arg_size_depth, features], dtype=dtype)
       res = tf.nn.conv2d(inputs, weights, strides=[1, stride, stride, 1], padding='SAME')
@@ -173,7 +173,7 @@ def _convolve_linear(args, filter, stride, features, typec, bias, bias_start=0.0
 
   # deConv
   if typec=='deConv':
-    with tf.variable_scope(scope or "deConv"):
+    with tf.variable_scope(scope):# or "deConv"):
       # setup weights as kernel x kernel x (new features=clstmfeatures*4) x (input features = clstmfeatures*2).
       # i.e., 2nd arg to transpose version is [height, width, output_channels, in_channels], where last 2 are switched compared to normal conv2d
       deweights = tf.get_variable( "deWeights", [filter[0], filter[1], features, total_arg_size_depth], dtype=dtype)

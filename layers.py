@@ -36,6 +36,9 @@ def _activation_summary(x):
   tf.histogram_summary(tensor_name + '/activations', x)
   tf.scalar_summary(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
+  # used by cifar10 and inception in tensorflow for multi-GPU systems that have no P2P.
+  # But Titan X's have DMA P2P, so change to /gpu:0
+  #https://github.com/tensorflow/tensorflow/issues/4881
 def _variable_on_cpu(name, shape, initializer):
   """Helper to create a Variable stored on CPU memory.
 
@@ -47,7 +50,8 @@ def _variable_on_cpu(name, shape, initializer):
   Returns:
     Variable Tensor
   """
-  with tf.device('/cpu:0'):
+#  with tf.device('/cpu:0'):
+  with tf.device('/gpu:0'):
     var = tf.get_variable(name, shape, initializer=initializer)
   return var
 
@@ -77,6 +81,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   return var
 
 def cnn2d_layer(inputs, kernel, stride, features, idx, linear = False):
+  # below scope means this layer is shared for all calls unless idx is different.
   with tf.variable_scope('{0}_cnn'.format(idx)) as scope:
     input_channels = inputs.get_shape()[3] # rgb
 
@@ -91,11 +96,12 @@ def cnn2d_layer(inputs, kernel, stride, features, idx, linear = False):
     return cnn_rect
 
 def dcnn2d_layer(inputs, kernel, stride, features, idx, linear = False):
-  with tf.variable_scope('{0}_trans_cnn'.format(idx)) as scope:
+  # below scope means this layer is shared for all calls unless idx is different.
+  with tf.variable_scope('{0}_dcnn'.format(idx)) as scope:
     input_channels = inputs.get_shape()[3] # rgb
     
-    weights = _variable_with_weight_decay('weights', shape=[kernel,kernel,features,input_channels], stddev=0.01, wd=FLAGS.weight_decay)
-    biases = _variable_on_cpu('biases',[features],tf.constant_initializer(0.01))
+    weights = _variable_with_weight_decay('deweights', shape=[kernel,kernel,features,input_channels], stddev=0.01, wd=FLAGS.weight_decay)
+    biases = _variable_on_cpu('debiases',[features],tf.constant_initializer(0.01))
     batch_size = tf.shape(inputs)[0]
     output_shape = tf.pack([tf.shape(inputs)[0], tf.shape(inputs)[1]*stride, tf.shape(inputs)[2]*stride, features]) 
     dcnn = tf.nn.conv2d_transpose(inputs, weights, output_shape, strides=[1,stride,stride,1], padding='SAME')
@@ -116,8 +122,8 @@ def fc_layer(inputs, hiddens, idx, flat = False, linear = False):
       dim = input_shape[1]
       inputs_processed = inputs
     
-    weights = _variable_with_weight_decay('weights', shape=[dim,hiddens],stddev=FLAGS.weights_init, wd=FLAGS.weight_decay)
-    biases = _variable_on_cpu('biases', [hiddens], tf.constant_initializer(FLAGS.weights_init))
+    weights = _variable_with_weight_decay('fcweights', shape=[dim,hiddens],stddev=FLAGS.weights_init, wd=FLAGS.weight_decay)
+    biases = _variable_on_cpu('fcbiases', [hiddens], tf.constant_initializer(FLAGS.weights_init))
     if linear:
       return tf.add(tf.matmul(inputs_processed,weights),biases,name=str(idx)+'_fc')
   

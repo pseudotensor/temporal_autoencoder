@@ -53,8 +53,9 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     sizexy=FLAGS.sizexy
     # Number of rgb or depth estimation at t=0, but no convolution in this direction
     sizez=3
-    # x: minibatches x input_seq_length of frames x sizex x sizey x sizez(rgb)
-    x = tf.placeholder(tf.float32, [None, FLAGS.input_seq_length, sizexy, sizexy, sizez])
+    with tf.name_scope('input'):
+      # x: minibatches x input_seq_length of frames x sizex x sizey x sizez(rgb)
+      x = tf.placeholder(tf.float32, [None, FLAGS.input_seq_length, sizexy, sizexy, sizez])
 
     # Setup dropout
     hold_prob = tf.placeholder("float")
@@ -153,20 +154,20 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
       # Convolutional lstm layer (input y_0 and hidden state, output prediction y_1 and new hidden state new_state)
       y_0 = cnn4 #y_0 should be same shape as first argument in clstm.clstm() above.
-      y_1, new_state = convcell(y_0, new_state, 'Conv')
+      y_1, new_state = convcell(y_0, new_state, 'Conv', 'clstm')
 
       # deConvolutional LSTM layer
-      y_2, denew_state = deconvcell(y_1, denew_state, 'deConv')
+      y_2, denew_state = deconvcell(y_1, denew_state, 'deConv', 'declstm')
 
       # DECODE
       # cnn5
-      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_5")
+      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_4")
       # cnn6
-      cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_6")
+      cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_3")
       # cnn7
-      cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_7")
+      cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_2")
       # x_1 (linear act)
-      x_1 = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_8", True)
+      x_1 = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_1", True)
       if i >= FLAGS.predict_frame_start:
         # add predictive layer
         x_pred.append(x_1)
@@ -210,20 +211,20 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
       # Convolutional lstm layer
       y_0 = cnn4
-      y_1, new_state_pred = convcell(y_0, new_state_pred, 'Conv')
+      y_1, new_state_pred = convcell(y_0, new_state_pred, 'Conv', 'clstm')
 
       # deConvolutional lstm layer
-      y_2, new_destate_pred = deconvcell(y_1, new_destate_pred, 'deConv')
+      y_2, new_destate_pred = deconvcell(y_1, new_destate_pred, 'deConv', 'declstm')
 
       # DECODE
       # cnn5
-      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_5")
+      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_4")
       # cnn6
-      cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_6")
+      cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_3")
       # cnn7
-      cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_7")
+      cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_2")
       # x_1_pred (linear act)
-      x_1_pred = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_8", True)
+      x_1_pred = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_1", True)
       if i >= FLAGS.predict_frame_start:
         x_pred_long.append(x_1_pred)
 
@@ -238,11 +239,15 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     # Compare x^{n+1} to xpred^n (that is supposed to be approximation to x^{n+1})
     # x: batchsize, time steps, sizexy, sizexy, sizez
     loss = tf.nn.l2_loss(x[:,FLAGS.predict_frame_start+1:,:,:,:] - x_pred[:,:,:,:,:])
-    #tf.scalar_summary('loss', loss)
     tf.summary.scalar('loss', loss)
+    normalnorm=tf.nn.l2_loss(x[:,FLAGS.predict_frame_start+1:,:,:,:])
+    tf.summary.scalar('normalnorm', normalnorm)
+    ploss = tf.sqrt(10.0*loss/normalnorm)
+    tf.summary.scalar('ploss', ploss)
 
     # Set training method
-    train_operation = tf.train.AdamOptimizer(FLAGS.adamvar).minimize(loss)
+    with tf.name_scope('train'):
+      train_operation = tf.train.AdamOptimizer(FLAGS.adamvar).minimize(loss)
     
     # List of all Variables
     variables = tf.global_variables()
@@ -257,149 +262,151 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     # Summary op
     #summary_op = tf.merge_all_summaries()
     summary_op = tf.summary.merge_all()
- 
-    # Initialize variables
-    init = tf.global_variables_initializer()
 
-    # Start session
-    sess = tf.Session()
 
-    # Initialize Network
-    if continuetrain==0:
-      print("Initialize network")
-      sess.run(init)
-    else:
-      print("load network")
-      # http://stackoverflow.com/questions/33759623/tensorflow-how-to-restore-a-previously-saved-model-python
-      #
-      # * means all if need specific format then *.csv
-      list_of_files = glob.glob(FLAGS.ckpt_dir + '/model.ckpt-*.meta')
-      if(len(list_of_files)==0):
+    with tf.Session() as sess:
+      # Initialize variables
+      init = tf.global_variables_initializer()
+
+      # Start session
+      sess = tf.Session()
+
+      # Initialize Network
+      if continuetrain==0:
         print("Initialize network")
         sess.run(init)
       else:
-        latest_file = max(list_of_files, key=os.path.getctime)
-        print("latest_file=%s" % (latest_file))
+        print("load network")
+        # http://stackoverflow.com/questions/33759623/tensorflow-how-to-restore-a-previously-saved-model-python
         #
-        checkpoint_path = latest_file
-        saver = tf.train.import_meta_graph(checkpoint_path)
-        saver.restore(sess, tf.train.latest_checkpoint(FLAGS.ckpt_dir))
-        all_vars = tf.get_collection('vars')
-        m = re.search('ckpt-([0-9]+).meta', latest_file)
-        nstep = int(m.group(1))
-        print("done loading network: nstep=%d" % (nstep))
-      
-    # Setup summary
-    summary_writer = tf.summary.FileWriter(FLAGS.ckpt_dir, sess.graph)
+        # * means all if need specific format then *.csv
+        list_of_files = glob.glob(FLAGS.ckpt_dir + '/model.ckpt-*.meta')
+        if(len(list_of_files)==0):
+          print("Initialize network")
+          sess.run(init)
+        else:
+          latest_file = max(list_of_files, key=os.path.getctime)
+          print("latest_file=%s" % (latest_file))
+          #
+          checkpoint_path = latest_file
+          saver = tf.train.import_meta_graph(checkpoint_path)
+          saver.restore(sess, tf.train.latest_checkpoint(FLAGS.ckpt_dir))
+          all_vars = tf.get_collection('vars')
+          m = re.search('ckpt-([0-9]+).meta', latest_file)
+          nstep = int(m.group(1))
+          print("done loading network: nstep=%d" % (nstep))
 
-    # Set number of model frames
-    #modelframes=FLAGS.input_seq_length+predictframes
-    modelframes=predictframes
+      # Setup summary
+      summary_writer = tf.summary.FileWriter(FLAGS.ckpt_dir, sess.graph)
 
-    # Set how often dump video to disk
-    howoftenvid=1000
-    # Set how often reports error to summary
-    howoftensummary=2000
-    # Set how often to write checkpoint file
-    howoftenckpt=2000
+      # Set number of model frames
+      #modelframes=FLAGS.input_seq_length+predictframes
+      modelframes=predictframes
 
-    ###############
-    # Training Loop
-    startstep=nstep
-    for step in xrange(startstep,FLAGS.max_minibatches):
-      nstep=step
+      # Set how often dump video to disk
+      howoftenvid=1000
+      # Set how often reports error to summary
+      howoftensummary=100
+      # Set how often to write checkpoint file
+      howoftenckpt=2000
 
-      # Generate mini-batch
-      dat = md.generate_model_sample(FLAGS.minibatch_size, FLAGS.input_seq_length, FLAGS.sizexy, num_balls, modeltype)
-      
-      # Get model data for comparing to prediction if generating video
-      if nstep%howoftenvid == 0:
-        datmodel = md.generate_model_sample(1, modelframes, FLAGS.sizexy, num_balls, modeltype)
-        # Overwrite so consistent with ground truth for video output
-        dat[0,0:FLAGS.input_seq_length] = datmodel[0,0:FLAGS.input_seq_length]
-      
-      # Train on mini-batch
-      # Compute error in prediction vs. model and compute time of mini-batch task
-      t = time.time()
-      _, lossm = sess.run([train_operation, loss],feed_dict={x:dat, hold_prob:FLAGS.hold_prob})
-      elapsed = time.time() - t
-      assert not np.isnan(lossm), 'Model reached lossm = NaN'
+      ###############
+      # Training Loop
+      startstep=nstep
+      for step in xrange(startstep,FLAGS.max_minibatches):
+        nstep=step
+
+        # Generate mini-batch
+        dat = md.generate_model_sample(FLAGS.minibatch_size, FLAGS.input_seq_length, FLAGS.sizexy, num_balls, modeltype)
+
+        # Get model data for comparing to prediction if generating video
+        if nstep%howoftenvid == 0:
+          datmodel = md.generate_model_sample(1, modelframes, FLAGS.sizexy, num_balls, modeltype)
+          # Overwrite so consistent with ground truth for video output
+          dat[0,0:FLAGS.input_seq_length] = datmodel[0,0:FLAGS.input_seq_length]
+
+        # Train on mini-batch
+        # Compute error in prediction vs. model and compute time of mini-batch task
+        t = time.time()
+        _, lossm = sess.run([train_operation, loss],feed_dict={x:dat, hold_prob:FLAGS.hold_prob})
+        elapsed = time.time() - t
+        assert not np.isnan(lossm), 'Model reached lossm = NaN'
 
 
-      # Store model and print-out loss
-      if nstep%howoftensummary == 0 and nstep != 0:
-        summary_str = sess.run(summary_op, feed_dict={x:dat, hold_prob:FLAGS.hold_prob})
-        summary_writer.add_summary(summary_str, nstep) 
-        print("")
-        print("time per batch is " + str(elapsed) + " seconds")
-        print("step=%d nstep=%d" % (step,nstep))
-        print("L2 loss=%g" % (lossm))
+        # Store model and print-out loss
+        if nstep%howoftensummary == 0:
+          summary_str = sess.run(summary_op, feed_dict={x:dat, hold_prob:FLAGS.hold_prob})
+          summary_writer.add_summary(summary_str, nstep) 
+          print("")
+          print("time per batch is " + str(elapsed) + " seconds")
+          print("step=%d nstep=%d" % (step,nstep))
+          print("L2 loss=%g" % (lossm))
 
-        #normalnorm=np.sum(dat[0,0])
-        normalnorm=np.sum(dat[0,FLAGS.predict_frame_start+1:,:,:,:])
-        print("normalnorm=%d" % (normalnorm))
-        print("L2 percent loss=%g" % (100.0*(np.sqrt(float(lossm))/float(normalnorm))))
-      else:
-        # track progress
-        sys.stdout.write('.')
-        sys.stdout.flush()
-            
+          #normalnorm=np.sum(dat[0,0])
+          normalnorm=np.sum(dat[0,FLAGS.predict_frame_start+1:,:,:,:])
+          print("normalnorm=%d" % (normalnorm))
+          print("L2 percent loss=%g" % (100.0*(np.sqrt(float(lossm))/float(normalnorm))))
+        else:
+          # track progress
+          sys.stdout.write('.')
+          sys.stdout.flush()
 
-      # Save checkpoint
-      if nstep%howoftenckpt == 0:
-        print("Saving checkpoint")
-        checkpoint_path = os.path.join(FLAGS.ckpt_dir, 'model.ckpt')
-        saver.save(sess, checkpoint_path, global_step=nstep)  
-        print("checkpoint saved to " + FLAGS.ckpt_dir)
 
-      # Output video of model and prediction for single video in mini-batch at this step
-      if nstep%howoftenvid == 0:
+        # Save checkpoint
+        if nstep%howoftenckpt == 0:
+          print("Saving checkpoint")
+          checkpoint_path = os.path.join(FLAGS.ckpt_dir, 'model.ckpt')
+          saver.save(sess, checkpoint_path, global_step=nstep)  
+          print("checkpoint saved to " + FLAGS.ckpt_dir)
 
-        # Write model video (includes given and ground truth frames)
-        video_path = os.path.join(FLAGS.video_dir, '')
+        # Output video of model and prediction for single video in mini-batch at this step
+        if nstep%howoftenvid == 0:
 
-        #http://stackoverflow.com/questions/10605163/opencv-videowriter-under-osx-producing-no-output
-        cc = cv2.cv.CV_FOURCC('m', 'p', '4', 'v') 
-        fps=4
-        sizevx=100
-        sizevy=100
-        sizevid=(sizevx, sizevy)
+          # Write model video (includes given and ground truth frames)
+          video_path = os.path.join(FLAGS.video_dir, '')
 
-        print("")
-        print("Writing model video")
-        video = cv2.VideoWriter()
-        success = video.open(video_path + "model_" + str(nstep) + ".mov", cc, fps, sizevid, True)
-        image = datmodel[0]
-        print(image.shape)
-        for i in xrange(modelframes):
-          x_1_r = np.uint8(np.minimum(1, np.maximum(image[i,:,:,:], 0)) * 255)
-          new_im = cv2.resize(x_1_r, (sizevx,sizevy))
-          video.write(new_im)
-        video.release()
+          #http://stackoverflow.com/questions/10605163/opencv-videowriter-under-osx-producing-no-output
+          cc = cv2.cv.CV_FOURCC('m', 'p', '4', 'v') 
+          fps=4
+          sizevx=100
+          sizevy=100
+          sizevid=(sizevx, sizevy)
 
-        # Write given + predicted video
-        print("Writing predicted video")
-        video = cv2.VideoWriter()
-        success = video.open(video_path + "clstm_" + str(nstep) + ".mov", cc, fps, sizevid, True)
+          print("")
+          print("Writing model video")
+          video = cv2.VideoWriter()
+          success = video.open(video_path + "model_" + str(nstep) + ".mov", cc, fps, sizevid, True)
+          image = datmodel[0]
+          print(image.shape)
+          for i in xrange(modelframes):
+            x_1_r = np.uint8(np.minimum(1, np.maximum(image[i,:,:,:], 0)) * 255)
+            new_im = cv2.resize(x_1_r, (sizevx,sizevy))
+            video.write(new_im)
+          video.release()
 
-        # Preappend starting sequence
-        image = datmodel[0]
-        print(image.shape)
-        for i in xrange(FLAGS.predict_frame_start):
-          x_1_r = np.uint8(np.minimum(1,np.maximum(image[i,:,:,:], 0)) * 255)
-          new_im = cv2.resize(x_1_r, (sizevx,sizevy))
-          video.write(new_im)
+          # Write given + predicted video
+          print("Writing predicted video")
+          video = cv2.VideoWriter()
+          success = video.open(video_path + "clstm_" + str(nstep) + ".mov", cc, fps, sizevid, True)
 
-        # Append predicted video
-        dat_gif = dat
-        image = sess.run([x_pred_long],feed_dict={x:dat_gif, hold_prob:FLAGS.hold_prob})
-        image = image[0][0]
-        print(image.shape)
-        for i in xrange(modelframes - FLAGS.predict_frame_start):
-          x_1_r = np.uint8(np.minimum(1,np.maximum(image[i,:,:,:], 0)) * 255)
-          new_im = cv2.resize(x_1_r, (sizevx,sizevy))
-          video.write(new_im)
-        video.release()
+          # Preappend starting sequence
+          image = datmodel[0]
+          print(image.shape)
+          for i in xrange(FLAGS.predict_frame_start):
+            x_1_r = np.uint8(np.minimum(1,np.maximum(image[i,:,:,:], 0)) * 255)
+            new_im = cv2.resize(x_1_r, (sizevx,sizevy))
+            video.write(new_im)
+
+          # Append predicted video
+          dat_gif = dat
+          image = sess.run([x_pred_long],feed_dict={x:dat_gif, hold_prob:FLAGS.hold_prob})
+          image = image[0][0]
+          print(image.shape)
+          for i in xrange(modelframes - FLAGS.predict_frame_start):
+            x_1_r = np.uint8(np.minimum(1,np.maximum(image[i,:,:,:], 0)) * 255)
+            new_im = cv2.resize(x_1_r, (sizevx,sizevy))
+            video.write(new_im)
+          video.release()
 
 
 def main(argv=None):
