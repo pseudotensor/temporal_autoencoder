@@ -5,7 +5,7 @@ class CRNNCell(object):
   """CRNN cell.
   """
 
-  def __call__(self, inputs, state, typec='Conv', scope=None):
+  def __call__(self, inputs, state, typec='Conv', dopeek=0, scope=None):
     """Run this RNN cell on inputs, starting from the inputted state.
     """
     raise NotImplementedError("Abstract method")
@@ -76,8 +76,13 @@ class clstm(CRNNCell):
   def output_size(self):
     return self._num_units
 
-  def __call__(self, inputs, state, typec='Conv', scope=None):
+  def __call__(self, inputs, state, typec='Conv', dopeek=0, scope=None):
     """Long short-term memory cell (LSTM)."""
+
+    # whether to use peek on c
+    #dopeek=0
+
+
     # inputs: batchsize x clstmshape x clstmshape x clstmfeatures
     with tf.variable_scope(scope or type(self).__name__):
       # Parameters of gates are concatenated into one multiply for efficiency.
@@ -88,6 +93,7 @@ class clstm(CRNNCell):
         c, h = tf.split(3, 2, state)
       # [inputs,h] is: 2 x batchsize x clstmshape x clstmshape x clstmfeatures
 
+
       doclstm=1
       if doclstm==1:
         concat = _convolve_linear([inputs, h], self.filter, self.stride, self.features * 4, typec, True, scope=scope)
@@ -96,12 +102,25 @@ class clstm(CRNNCell):
         i, j, f, o = tf.split(3, 4, concat)
       else:
         # TODO: work in-progress
-        incat = tf.concat(3,args)
+        incat = tf.concat(3,[inputs, h])
         # general W.x + b separately for each i,j,f,o
         #i = tf.matmul(incat,weightsi) + biasesi
         #j = tf.matmul(incat,weightsj) + biasesj
         #f = tf.matmul(incat,weightsf) + biasesf
         #o = tf.matmul(incat,weightso) + biaseso
+
+
+      #https://github.com/tensorflow/tensorflow/issues/834
+      # https://arxiv.org/abs/1308.0850
+      # https://arxiv.org/pdf/1506.04214v2.pdf
+      if dopeek==1:
+        # setup weights same size as c, since element-wise multiplication
+        weights_ci = tf.get_variable( "Weights_ci", c.get_shape(), dtype=c.dtype)
+        i = i + c * weights_ci
+
+        weights_cf = tf.get_variable( "Weights_cf", c.get_shape(), dtype=c.dtype)
+        f = f + c * weights_cf
+
         
       # concat: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
 
@@ -109,6 +128,13 @@ class clstm(CRNNCell):
       # If stride!=1, then c will be different size than i,j,f,o, so next operation won't work.
       new_c = (c * tf.nn.sigmoid(f + self._forget_bias) + tf.nn.sigmoid(i) * self._activation(j))
       # If stride!=1, then o different dimension than new_h needs to be. (because c and h need to be same size if packing/splitting them as well as recurrently needs to be same size)
+
+      if dopeek==1:
+        weights_co = tf.get_variable( "Weights_co", c.get_shape(), dtype=c.dtype)
+        o = o + new_c * weights_co
+        
+
+      
       new_h = self._activation(new_c) * tf.nn.sigmoid(o)
 
       if self._state_is_tuple:

@@ -85,6 +85,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
         testsize=testsize/cnnstrides[i]
     #
         
+    dopeek=1 # whether to peek as cell state when constructing gates
     clstminput=sizexy/cnnstrideproduct # must be evenly divisible
     clstmshape=[clstminput,clstminput]
     clstmkernel=[3,3]
@@ -154,10 +155,10 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
       # Convolutional lstm layer (input y_0 and hidden state, output prediction y_1 and new hidden state new_state)
       y_0 = cnn4 #y_0 should be same shape as first argument in clstm.clstm() above.
-      y_1, new_state = convcell(y_0, new_state, 'Conv', 'clstm')
+      y_1, new_state = convcell(y_0, new_state, 'Conv', dopeek, 'clstm')
 
       # deConvolutional LSTM layer
-      y_2, denew_state = deconvcell(y_1, denew_state, 'deConv', 'declstm')
+      y_2, denew_state = deconvcell(y_1, denew_state, 'deConv', dopeek, 'declstm')
 
       # DECODE
       # cnn5
@@ -211,10 +212,10 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
       # Convolutional lstm layer
       y_0 = cnn4
-      y_1, new_state_pred = convcell(y_0, new_state_pred, 'Conv', 'clstm')
+      y_1, new_state_pred = convcell(y_0, new_state_pred, 'Conv', dopeek, 'clstm')
 
       # deConvolutional lstm layer
-      y_2, new_destate_pred = deconvcell(y_1, new_destate_pred, 'deConv', 'declstm')
+      y_2, new_destate_pred = deconvcell(y_1, new_destate_pred, 'deConv', dopeek, 'declstm')
 
       # DECODE
       # cnn5
