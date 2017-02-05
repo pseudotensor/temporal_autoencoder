@@ -21,6 +21,17 @@ https://arxiv.org/abs/1502.04681
 https://arxiv.org/abs/1605.07157
 http://www.ri.cmu.edu/pub_files/2014/3/egpaper_final.pdf
 
+# Papers on temporal convolution
+
+http://machinelearning.wustl.edu/mlpapers/paper_files/icml2010_JiXYY10.pdf
+https://arxiv.org/pdf/1506.01911.pdf
+http://link.springer.com/chapter/10.1007/978-3-642-25446-8_4#page-1
+https://ai2-s2-pdfs.s3.amazonaws.com/12b6/551a0f9f5aa62f7d37f03ebc66631e529c4b.pdf
+http://vision.stanford.edu/pdf/karpathy14.pdf
+https://arxiv.org/abs/1412.0767
+https://arxiv.org/abs/1511.06432
+
+
 # Uses parts of (or inspired by) the following repos:
 
 https://github.com/tensorflow/models/blob/master/real_nvp/real_nvp_utils.py
