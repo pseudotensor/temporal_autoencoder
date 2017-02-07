@@ -43,6 +43,23 @@ tf.app.flags.DEFINE_integer('minibatch_size', 16,
 
 
 
+def total_parameters():
+  total_parameters = 0
+  for variable in tf.trainable_variables():
+      # shape is an array of tf.Dimension
+      shape = variable.get_shape()
+      #print(shape)
+      #print(len(shape))
+      variable_parametes = 1
+      for dim in shape:
+          print(dim)
+          variable_parametes *= dim.value
+      #print(variable_parametes)
+      total_parameters += variable_parametes
+  print("total_parameters=%d" % (total_parameters))
+  
+
+
 # Function to train autoencoder network
 def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
@@ -311,6 +328,9 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       # Set how often to write checkpoint file
       howoftenckpt=2000
 
+      # count and output total number of model/graph parameters
+      total_parameters()
+
       ###############
       # Training Loop
       startstep=nstep
@@ -334,7 +354,12 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
         assert not np.isnan(lossm), 'Model reached lossm = NaN'
 
 
-        # Store model and print-out loss
+        # Store model
+        if nstep%howoftensummary == 0 and nstep!=0:
+          summary_str = sess.run(summary_op, feed_dict={x:dat, hold_prob:FLAGS.hold_prob})
+          summary_writer.add_summary(summary_str, nstep)
+          
+        # Print-out loss
         if nstep%howoftensummary == 0:
           summary_str = sess.run(summary_op, feed_dict={x:dat, hold_prob:FLAGS.hold_prob})
           summary_writer.add_summary(summary_str, nstep) 
@@ -443,5 +468,4 @@ def main(argv=None):
 
 if __name__ == '__main__':
   tf.app.run()
-
 

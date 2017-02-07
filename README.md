@@ -30,7 +30,7 @@ https://ai2-s2-pdfs.s3.amazonaws.com/12b6/551a0f9f5aa62f7d37f03ebc66631e529c4b.p
 http://vision.stanford.edu/pdf/karpathy14.pdf
 https://arxiv.org/abs/1412.0767
 https://arxiv.org/abs/1511.06432
-
+And do 3D convolutions in tensorflow: https://www.tensorflow.org/api_docs/python/nn/convolution
 
 # Uses parts of (or inspired by) the following repos:
 
@@ -135,7 +135,7 @@ Notes for wheel case:
 
 * Try different hyperparameters
 
-* Try multi-scale for space
+* Try multi-scale for space (http://vision.stanford.edu/pdf/karpathy14.pdf)
 
 * Try multi-scale for time (to capture periods over long times)
 
@@ -143,7 +143,9 @@ Notes for wheel case:
 
 * Try skip connections (https://arxiv.org/pdf/1605.07157v4.pdf)
 
-* Try temporal convolution
+* Try feedbackward connections in time (like implicit stepping vs. explicit forward euler stepping).  Pass backwards cell state, back along diagonal in space-time. https://arxiv.org/pdf/1506.01911.pdf
+
+* Try temporal convolutions.  Can factorize with spatial,temporal,spatial, etc. to reduce parameters
 
 * Try other LSTM architectures (C-peek, bind forget-recall, GRU, etc.)
 
@@ -156,6 +158,7 @@ http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorf
 http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/ (pytorch)
 http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/
 https://arxiv.org/pdf/1511.05644v2.pdf
+https://arxiv.org/pdf/1612.00005v1.pdf
 
 * Try more depth in time
 
