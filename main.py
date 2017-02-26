@@ -195,7 +195,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
 
     # Pack-up predictive layer's results
     # e.g. for input_seq_length=10 loop 0..9, had put into x_pred i=5,6,7,8,9 (i.e. 5 frame prediction)
-    x_pred = tf.pack(x_pred)
+    x_pred = tf.stack(x_pred)
     # reshape so in order of minibatch x frame x sizex x sizey x rgb
     x_pred = tf.transpose(x_pred, [1,0,2,3,4])
     
@@ -247,7 +247,7 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
         x_pred_long.append(x_1_pred)
 
     # Pack-up predicted layer's results
-    x_pred_long = tf.pack(x_pred_long)
+    x_pred_long = tf.stack(x_pred_long)
     x_pred_long = tf.transpose(x_pred_long, [1,0,2,3,4])
 
 

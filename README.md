@@ -159,6 +159,7 @@ http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorf
 http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/
 https://arxiv.org/pdf/1511.05644v2.pdf
 https://arxiv.org/pdf/1612.00005v1.pdf
+https://arxiv.org/pdf/1701.06547.pdf
 
 * Try more depth in time
 

@@ -90,7 +90,7 @@ class clstm(CRNNCell):
         c, h = state
       else:
         # c and h are each batchsize x clstmshape x clstmshape x clstmfeatures
-        c, h = tf.split(3, 2, state)
+        c, h = tf.split(axis=3, num_or_size_splits=2, value=state)
       # [inputs,h] is: 2 x batchsize x clstmshape x clstmshape x clstmfeatures
 
 
@@ -99,10 +99,10 @@ class clstm(CRNNCell):
         concat = _convolve_linear([inputs, h], self.filter, self.stride, self.features * 4, typec, True, scope=scope)
         # http://colah.github.io/posts/2015-08-Understanding-LSTMs/
         # i = input_gate, j = new_input, f = forget_gate, o = output_gate (each with clstmfeatures features)
-        i, j, f, o = tf.split(3, 4, concat)
+        i, j, f, o = tf.split(axis=3, num_or_size_splits=4, value=concat)
       else:
         # TODO: work in-progress
-        incat = tf.concat(3,[inputs, h])
+        incat = tf.concat(axis=3,values=[inputs, h])
         # general W.x + b separately for each i,j,f,o
         #i = tf.matmul(incat,weightsi) + biasesi
         #j = tf.matmul(incat,weightsj) + biasesj
@@ -140,7 +140,7 @@ class clstm(CRNNCell):
       if self._state_is_tuple:
         new_state = LSTMStateTuple(new_c, new_h)
       else:
-        new_state = tf.concat(3, [new_c, new_h])
+        new_state = tf.concat(axis=3, values=[new_c, new_h])
       return new_h, new_state
 
 def _convolve_linear(args, filter, stride, features, typec, bias, bias_start=0.0, scope=None):
@@ -178,7 +178,7 @@ def _convolve_linear(args, filter, stride, features, typec, bias, bias_start=0.0
   if len(args) == 1:
     inputs = args[0]
   else:
-    inputs=tf.concat(3, args)
+    inputs=tf.concat(axis=3, values=args)
 
   # Conv
   if typec=='Conv':
@@ -203,7 +203,7 @@ def _convolve_linear(args, filter, stride, features, typec, bias, bias_start=0.0
       # setup weights as kernel x kernel x (new features=clstmfeatures*4) x (input features = clstmfeatures*2).
       # i.e., 2nd arg to transpose version is [height, width, output_channels, in_channels], where last 2 are switched compared to normal conv2d
       deweights = tf.get_variable( "deWeights", [filter[0], filter[1], features, total_arg_size_depth], dtype=dtype)
-      output_shape = tf.pack([tf.shape(inputs)[0], tf.shape(inputs)[1]*stride, tf.shape(inputs)[2]*stride, features]) 
+      output_shape = tf.stack([tf.shape(inputs)[0], tf.shape(inputs)[1]*stride, tf.shape(inputs)[2]*stride, features]) 
       # first argument is batchsize x clstmshape x clstmshape x (2*clstmfeatures)
       # res: batchsize x clstmshape x clstmshape x (clstmfeatures*4)
       res = tf.nn.conv2d_transpose(inputs, deweights, output_shape, strides=[1, stride, stride, 1], padding='SAME')
