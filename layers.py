@@ -50,8 +50,8 @@ def _variable_on_cpu(name, shape, initializer):
   Returns:
     Variable Tensor
   """
-#  with tf.device('/cpu:0'):
-  with tf.device('/gpu:0'):
+  with tf.device('/cpu:0'):
+#  with tf.device('/gpu:0'):
     var = tf.get_variable(name, shape, initializer=initializer)
   return var
 
@@ -102,6 +102,7 @@ def dcnn2d_layer(inputs, kernel, stride, features, idx, linear = False):
     
     weights = _variable_with_weight_decay('deweights', shape=[kernel,kernel,features,input_channels], stddev=0.01, wd=FLAGS.weight_decay)
     biases = _variable_on_cpu('debiases',[features],tf.constant_initializer(0.01))
+
     batch_size = tf.shape(inputs)[0]
     output_shape = tf.stack([tf.shape(inputs)[0], tf.shape(inputs)[1]*stride, tf.shape(inputs)[2]*stride, features]) 
     dcnn = tf.nn.conv2d_transpose(inputs, weights, output_shape, strides=[1,stride,stride,1], padding='SAME')

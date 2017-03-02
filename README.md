@@ -64,12 +64,15 @@ cs231n.stanford.edu/reports2016/223_Report.pdf
 
 # Program Requirements:
 
-* Tensorflow and related packages like python
-* OpenCV
+* Tensorflow(1.0)
+* Python(2.7)
+* OpenCV(2)
 
 # Post-Processing requirements
 
 * avconv, mencoder, MP4Box,smplayer
+
+sudo apt-get install Imagemagick avconv libav-tools mencoder MP4Box
 
 
 # How to run:

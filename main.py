@@ -52,7 +52,7 @@ def total_parameters():
       #print(len(shape))
       variable_parametes = 1
       for dim in shape:
-          print(dim)
+          #print(dim)
           variable_parametes *= dim.value
       #print(variable_parametes)
       total_parameters += variable_parametes
@@ -149,106 +149,106 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       denew_state = deconvcell.set_zero_state(FLAGS.minibatch_size, tf.float32) 
 
       
+    with tf.variable_scope('graph'):
+      ########################
+      # Create CNN-LSTM-dCNN for an input of input_seq_length-1 frames in n time for an output of input_seq_length-1 frames in n+1 time
+      for i in xrange(FLAGS.input_seq_length-1):
 
-    ########################
-    # Create CNN-LSTM-dCNN for an input of input_seq_length-1 frames in n time for an output of input_seq_length-1 frames in n+1 time
-    for i in xrange(FLAGS.input_seq_length-1):
+        # ENCODE
+        # CNN: (name, 2D square kernel filter size, stride for spatial domain, number of feature maps, name) using ELUs
+        # cnn1:
+        if i < FLAGS.predict_frame_start:
+          # only dropout on training layers
+          cnn1 = ld.cnn2d_layer(x_dropout[:,i,:,:,:], cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
+        else:
+          # direct input of prior output for predictive layers
+          cnn1 = ld.cnn2d_layer(x_1, cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
+        # cnn2:
+        cnn2 = ld.cnn2d_layer(cnn1, cnnkernels[1], cnnstrides[1], cnnfeatures[1], "cnn_2")
+        # cnn3:
+        cnn3 = ld.cnn2d_layer(cnn2, cnnkernels[2], cnnstrides[2], cnnfeatures[2], "cnn_3")
+        # cnn4:
+        cnn4 = ld.cnn2d_layer(cnn3, cnnkernels[3], cnnstrides[3], cnnfeatures[3], "cnn_4")
 
-      # ENCODE
-      # CNN: (name, 2D square kernel filter size, stride for spatial domain, number of feature maps, name) using ELUs
-      # cnn1:
-      if i < FLAGS.predict_frame_start:
-        # only dropout on training layers
-        cnn1 = ld.cnn2d_layer(x_dropout[:,i,:,:,:], cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
-      else:
-        # direct input of prior output for predictive layers
-        cnn1 = ld.cnn2d_layer(x_1, cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
-      # cnn2:
-      cnn2 = ld.cnn2d_layer(cnn1, cnnkernels[1], cnnstrides[1], cnnfeatures[1], "cnn_2")
-      # cnn3:
-      cnn3 = ld.cnn2d_layer(cnn2, cnnkernels[2], cnnstrides[2], cnnfeatures[2], "cnn_3")
-      # cnn4:
-      cnn4 = ld.cnn2d_layer(cnn3, cnnkernels[3], cnnstrides[3], cnnfeatures[3], "cnn_4")
+        # Convolutional lstm layer (input y_0 and hidden state, output prediction y_1 and new hidden state new_state)
+        y_0 = cnn4 #y_0 should be same shape as first argument in clstm.clstm() above.
+        y_1, new_state = convcell(y_0, new_state, 'Conv', dopeek, 'clstm')
 
-      # Convolutional lstm layer (input y_0 and hidden state, output prediction y_1 and new hidden state new_state)
-      y_0 = cnn4 #y_0 should be same shape as first argument in clstm.clstm() above.
-      y_1, new_state = convcell(y_0, new_state, 'Conv', dopeek, 'clstm')
+        # deConvolutional LSTM layer
+        y_2, denew_state = deconvcell(y_1, denew_state, 'deConv', dopeek, 'declstm')
 
-      # deConvolutional LSTM layer
-      y_2, denew_state = deconvcell(y_1, denew_state, 'deConv', dopeek, 'declstm')
+        # DECODE
+        # cnn5
+        cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_4")
+        # cnn6
+        cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_3")
+        # cnn7
+        cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_2")
+        # x_1 (linear act)
+        x_1 = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_1", True)
+        if i >= FLAGS.predict_frame_start:
+          # add predictive layer
+          x_pred.append(x_1)
+        # set reuse to true after first go
+        if i == 0:
+          tf.get_variable_scope().reuse_variables()
 
-      # DECODE
-      # cnn5
-      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_4")
-      # cnn6
-      cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_3")
-      # cnn7
-      cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_2")
-      # x_1 (linear act)
-      x_1 = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_1", True)
-      if i >= FLAGS.predict_frame_start:
-        # add predictive layer
-        x_pred.append(x_1)
-      # set reuse to true after first go
-      if i == 0:
-        tf.get_variable_scope().reuse_variables()
+      # Pack-up predictive layer's results
+      # e.g. for input_seq_length=10 loop 0..9, had put into x_pred i=5,6,7,8,9 (i.e. 5 frame prediction)
+      x_pred = tf.stack(x_pred)
+      # reshape so in order of minibatch x frame x sizex x sizey x rgb
+      x_pred = tf.transpose(x_pred, [1,0,2,3,4])
 
-    # Pack-up predictive layer's results
-    # e.g. for input_seq_length=10 loop 0..9, had put into x_pred i=5,6,7,8,9 (i.e. 5 frame prediction)
-    x_pred = tf.stack(x_pred)
-    # reshape so in order of minibatch x frame x sizex x sizey x rgb
-    x_pred = tf.transpose(x_pred, [1,0,2,3,4])
-    
 
-    #######################################################
-    # Create network to generate predicted video
-    predictframes=50
+      #######################################################
+      # Create network to generate predicted video
+      predictframes=50
 
-    ##############
-    # Setup CLSTM (initialize to zero, but same convcell as in other network)
-    x_pred_long = []
-    new_state_pred = convcell.set_zero_state(FLAGS.minibatch_size, tf.float32)
-    new_destate_pred = deconvcell.set_zero_state(FLAGS.minibatch_size, tf.float32)
+      ##############
+      # Setup CLSTM (initialize to zero, but same convcell as in other network)
+      x_pred_long = []
+      new_state_pred = convcell.set_zero_state(FLAGS.minibatch_size, tf.float32)
+      new_destate_pred = deconvcell.set_zero_state(FLAGS.minibatch_size, tf.float32)
 
-    #######
-    # Setup long prediction network
-    for i in xrange(predictframes):
+      #######
+      # Setup long prediction network
+      for i in xrange(predictframes):
 
-      # ENCODE
-      # cnn1
-      if i < FLAGS.predict_frame_start: # use known sequence for this many frames
-        cnn1 = ld.cnn2d_layer(x[:,i,:,:,:], cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
-      else: # use generated sequence for rest of frames
-        cnn1 = ld.cnn2d_layer(x_1_pred, cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
-      # cnn2
-      cnn2 = ld.cnn2d_layer(cnn1, cnnkernels[1], cnnstrides[1], cnnfeatures[1], "cnn_2")
-      # cnn3
-      cnn3 = ld.cnn2d_layer(cnn2, cnnkernels[2], cnnstrides[2], cnnfeatures[2], "cnn_3")
-      # cnn4
-      cnn4 = ld.cnn2d_layer(cnn3, cnnkernels[3], cnnstrides[3], cnnfeatures[3], "cnn_4")
+        # ENCODE
+        # cnn1
+        if i < FLAGS.predict_frame_start: # use known sequence for this many frames
+          cnn1 = ld.cnn2d_layer(x[:,i,:,:,:], cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
+        else: # use generated sequence for rest of frames
+          cnn1 = ld.cnn2d_layer(x_1_pred, cnnkernels[0], cnnstrides[0], cnnfeatures[0], "cnn_1")
+        # cnn2
+        cnn2 = ld.cnn2d_layer(cnn1, cnnkernels[1], cnnstrides[1], cnnfeatures[1], "cnn_2")
+        # cnn3
+        cnn3 = ld.cnn2d_layer(cnn2, cnnkernels[2], cnnstrides[2], cnnfeatures[2], "cnn_3")
+        # cnn4
+        cnn4 = ld.cnn2d_layer(cnn3, cnnkernels[3], cnnstrides[3], cnnfeatures[3], "cnn_4")
 
-      # Convolutional lstm layer
-      y_0 = cnn4
-      y_1, new_state_pred = convcell(y_0, new_state_pred, 'Conv', dopeek, 'clstm')
+        # Convolutional lstm layer
+        y_0 = cnn4
+        y_1, new_state_pred = convcell(y_0, new_state_pred, 'Conv', dopeek, 'clstm')
 
-      # deConvolutional lstm layer
-      y_2, new_destate_pred = deconvcell(y_1, new_destate_pred, 'deConv', dopeek, 'declstm')
+        # deConvolutional lstm layer
+        y_2, new_destate_pred = deconvcell(y_1, new_destate_pred, 'deConv', dopeek, 'declstm')
 
-      # DECODE
-      # cnn5
-      cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_4")
-      # cnn6
-      cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_3")
-      # cnn7
-      cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_2")
-      # x_1_pred (linear act)
-      x_1_pred = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_1", True)
-      if i >= FLAGS.predict_frame_start:
-        x_pred_long.append(x_1_pred)
+        # DECODE
+        # cnn5
+        cnn5 = ld.dcnn2d_layer(y_2, dcnnkernels[0], dcnnstrides[0], dcnnfeatures[0], "dcnn_4")
+        # cnn6
+        cnn6 = ld.dcnn2d_layer(cnn5, dcnnkernels[1], dcnnstrides[1], dcnnfeatures[1], "dcnn_3")
+        # cnn7
+        cnn7 = ld.dcnn2d_layer(cnn6, dcnnkernels[2], dcnnstrides[2], dcnnfeatures[2], "dcnn_2")
+        # x_1_pred (linear act)
+        x_1_pred = ld.dcnn2d_layer(cnn7, dcnnkernels[3], dcnnstrides[3], dcnnfeatures[3], "dcnn_1", True)
+        if i >= FLAGS.predict_frame_start:
+          x_pred_long.append(x_1_pred)
 
-    # Pack-up predicted layer's results
-    x_pred_long = tf.stack(x_pred_long)
-    x_pred_long = tf.transpose(x_pred_long, [1,0,2,3,4])
+      # Pack-up predicted layer's results
+      x_pred_long = tf.stack(x_pred_long)
+      x_pred_long = tf.transpose(x_pred_long, [1,0,2,3,4])
 
 
     #######################################################
@@ -263,10 +263,11 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
     ploss = tf.sqrt(10.0*loss/normalnorm)
     tf.summary.scalar('ploss', ploss)
 
+    
     # Set training method
     with tf.name_scope('train'):
       train_operation = tf.train.AdamOptimizer(FLAGS.adamvar).minimize(loss)
-    
+     
     # List of all Variables
     variables = tf.global_variables()
 
