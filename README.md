@@ -53,7 +53,8 @@ cs231n.stanford.edu/reports2016/223_Report.pdf
 
 # Program Requirements:
 
-* Tensorflow and related packages like python
+* Tensorflow 0.12
+* Python 2.7
 * OpenCV
 
 # Post-Processing requirements
@@ -65,12 +66,14 @@ cs231n.stanford.edu/reports2016/223_Report.pdf
 
 python main.py
 
-Post-processing: making model vs. predicted video:
+# Post-processing: making model vs. predicted video:
 
 sh mergemov.sh
 
 smplayer out_all.mp4
+
 or
+
 smplayer out_all2_fast.mp4
 
 # Some training results:
