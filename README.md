@@ -77,14 +77,15 @@ sudo apt-get install Imagemagick avconv libav-tools mencoder MP4Box
 
 # How to run:
 
-python main.py
+python main.py --num_gpus=<number of gpus>
 
-Post-processing: making model vs. predicted video:
+where <number of gpus> can be 1 through number of actual GPU boards on node.
+
+# Post-processing: making model vs. predicted video:
 
 sh mergemov.sh
 
 smplayer out_all.mp4
-or
 smplayer out_all2_fast.mp4
 
 # Some training results:
@@ -117,10 +118,6 @@ Notes for wheel case:
 1) In main.py:
 
 * Choose global flags
-* In main():
-  * Choose to use checkpoints (if exist) or not: continuetrain
-  * type of model: modeltype
-  * number of balls: num_balls
 
 2) In balls.py:
 
