@@ -41,7 +41,13 @@ def model_n(T=64, TY=0, n=2, r=None, m=None):
 
     good_config=False
 
+    goodconfigattempt=0
+    maxgoodconfigattempts=10
     while not good_config:
+        goodconfigattempt=goodconfigattempt+1
+        if goodconfigattempt>maxgoodconfigattempts:
+            break
+        
         x = 2+rand(n,2)*8
         good_config=True
         for i in range(n):

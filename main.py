@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_float('adamvar', .001,
                             """adamvar for dropout""")
 tf.app.flags.DEFINE_integer('minibatch_size', 16,
                             """mini-batch size""")
-tf.app.flags.DEFINE_integer('num_balls', 1,
+tf.app.flags.DEFINE_integer('init_num_balls', 1,
                             """How many balls to model.""")
 # Choose which model to work on
 # 0 = classic bouncing balls
@@ -317,7 +317,7 @@ def average_gradients(tower_grads):
 
 
 # Function to train autoencoder network
-def autoencode(continuetrain=0,modeltype=0,num_balls=2):
+def autoencode(continuetrain=0,modeltype=0,init_num_balls=2):
 
 
   # Some checks
@@ -487,18 +487,30 @@ def autoencode(continuetrain=0,modeltype=0,num_balls=2):
       ###############
       # Training Loop
       startstep=nstep
+      num_balls = FLAGS.init_num_balls
       for step in xrange(startstep,FLAGS.max_minibatches):
         nstep=step
 
+        #########################
+        # model-dependent code
+        if step%100==0 and step>0:
+          num_balls=num_balls+1
+          # limit so doesn't go beyond point where can't fit balls and reaches good_config=False always in models.py
+          if num_balls>5:
+            num_balls=5
+          print("num_balls=%d" % (num_balls))
+
+          
+        # create input data
         tower_dat = []
         tower_datmodel = []
         with tf.variable_scope(tf.get_variable_scope()): # variable scope
           for i in xrange(FLAGS.num_gpus):
             # Generate mini-batch
-            dat = md.generate_model_sample(FLAGS.minibatch_size, FLAGS.input_seq_length, FLAGS.sizexy, FLAGS.num_balls, FLAGS.modeltype)
+            dat = md.generate_model_sample(FLAGS.minibatch_size, FLAGS.input_seq_length, FLAGS.sizexy, num_balls, FLAGS.modeltype)
   
             # Get model data for comparing to prediction if generating video
-            datmodel = md.generate_model_sample(1, modelframes, FLAGS.sizexy, FLAGS.num_balls, FLAGS.modeltype)
+            datmodel = md.generate_model_sample(1, modelframes, FLAGS.sizexy, num_balls, FLAGS.modeltype)
             # Overwrite so consistent with ground truth for video output
             dat[0,0:FLAGS.input_seq_length] = datmodel[0,0:FLAGS.input_seq_length]
 
@@ -612,7 +624,7 @@ def main(argv=None):
   #
   #
   modeltype=FLAGS.modeltype
-  num_balls=FLAGS.num_balls
+  init_num_balls=FLAGS.init_num_balls
   #
   # Setup checkpoint directory
   if tf.gfile.Exists(FLAGS.ckpt_dir):
@@ -630,7 +642,7 @@ def main(argv=None):
     tf.gfile.MakeDirs(FLAGS.video_dir)
 
   # Start training autoencoder
-  autoencode(continuetrain=continuetrain,modeltype=modeltype,num_balls=num_balls)
+  autoencode(continuetrain=continuetrain,modeltype=modeltype,init_num_balls=init_num_balls)
 
 if __name__ == '__main__':
   tf.app.run()
