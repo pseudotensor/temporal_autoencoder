@@ -493,11 +493,11 @@ def autoencode(continuetrain=0,modeltype=0,init_num_balls=2):
 
         #########################
         # model-dependent code
-        if step%100==0 and step>0:
+        if step%howoftenvid==0 and step>0:
           num_balls=num_balls+1
           # limit so doesn't go beyond point where can't fit balls and reaches good_config=False always in models.py
-          if num_balls>5:
-            num_balls=5
+          if num_balls>3:
+            num_balls=3
           print("num_balls=%d" % (num_balls))
 
           
